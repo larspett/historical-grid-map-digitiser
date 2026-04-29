@@ -1,4 +1,24 @@
-.Rproj.user
+# Raw page exports — large files, not versioned
+pages/
+
+# Pipeline outputs — generated, not versioned
+data/output/
+
+# renv cache
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+
+# R
 .Rhistory
-.RData
+.Rdata
 .Ruserdata
+*.Rproj.user/
+
+# OS
+.DS_Store
+Thumbs.db
