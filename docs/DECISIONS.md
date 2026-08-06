@@ -117,3 +117,11 @@ Update it whenever a non-obvious choice is made.
   first; the inversion is straightforward but requires testing on a real page.
 - **Impact:** `02_sample_cells.R` will not produce correct results until this is
   resolved. Implement and validate before batch processing.
+
+---
+
+## 2026-08-06 — Bleed-through from reverse side of paper handled by threshold alone
+
+- **What:** Scanned pages sometimes show faint shadows of the map printed on the reverse side bleeding through the paper. No special pre-processing is applied to remove this.
+- **Why:** The real filled cells are always substantially darker than any bleed-through. The darkness distribution across cells is expected to be trimodal: empty cells (~0), bleed-through (~0.1–0.2), and filled cells (~0.7–1.0). Setting the presence threshold above the bleed-through cluster is sufficient to exclude it cleanly. The correct threshold value will be determined empirically by plotting the darkness distribution across a representative set of test pages.
+- **Impact:** Threshold tuning must account for the bleed-through cluster explicitly — the valley between bleed-through and filled cells is the correct threshold location, not the valley between empty and bleed-through. Document the chosen threshold value and the test pages used to derive it when tuning is complete.
