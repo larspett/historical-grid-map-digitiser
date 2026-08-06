@@ -1,117 +1,189 @@
 # historical-grid-map-digitiser
 
-A general-purpose R pipeline for digitising historical presence/absence data from hand-drawn gridded maps into georeferenced datasets.
+A pipeline for digitising historical presence/absence data from hand-drawn gridded maps into georeferenced datasets. Developed for a collection of butterfly distribution maps from a Swedish parish (1964–1970), but designed to work with any similarly structured gridded survey map.
 
-## Background
+---
 
-Developed to process a collection of butterfly distribution maps from a Swedish parish covering 1964–1970, drawn on a UTM-aligned grid over a Swedish topographic base map. The pipeline is intentionally species- and taxon-agnostic and can be applied to any similar gridded survey map.
+## What this does
 
-## Pipeline overview
-
-```
-[Once]        Extract pages from PDF           → pages/*.png
-[Once]        Catalogue pages manually          → data/catalogue.csv
-[Once]        Define grid coordinate system     → R/03_build_grid.R
-[Per scan]    Click 4 grid corners (Shiny app)  → data/corners.csv
-[Batch]       Sample cell intensities           → R/02_sample_cells.R
-[Batch]       Attach real-world coordinates     → R/03_build_grid.R
-[Output]      Tidy presence/absence dataset     → data/output/
-```
-
-## Grid coordinate system
-
-This pipeline was developed for a survey grid with the following properties:
-
-- Grid cells are 200 × 200m (1/5 of a UTM kilometre square)
-- Columns A–P (west → east), rows 1–23 (north → south)
-- Grid origin (top-left corner of A1): **6235000m N, 445000m E**
-- UTM zone 33N (EPSG:32633), output transformed to SWEREF99TM (EPSG:3006)
-
-To adapt for a different map, update the constants in `R/03_build_grid.R`.
-
-## Repository structure
+The pipeline takes scanned map images where a surveyor has filled in grid squares to indicate species presence, and converts them into a tidy, georeferenced dataset with real-world coordinates for each grid cell.
 
 ```
-R/
-  01_extract_pages.R     # Extract PNG pages from PDF
-  02_sample_cells.R      # Sample pixel intensity per grid cell
-  03_build_grid.R        # Build georeferenced cell centroid dataset
-  utils.R                # Shared helper functions
-shiny/
-  corner_clicker/
-    app.R                # Minimal app: load image, click 4 corners, save CSV
-data/
-  catalogue.csv          # Page index: page, type, species, year
-  corners.csv            # Corner pixel coordinates per page (output of Shiny app)
-  output/                # Gitignored — tidy CSVs per species/year
-docs/
-  pipeline.md            # Detailed pipeline notes
-pages/                   # Gitignored — PNG exports from PDF
+Scanned map images  →  Click 4 corners  →  Automated cell sampling  →  Georeferenced CSV
 ```
+
+---
 
 ## Requirements
 
-R packages are managed with `renv`. To restore the environment:
+- **R** (version 4.1 or later) — [download here](https://cran.r-project.org)
+- **RStudio** — [download here](https://posit.co/download/rstudio-desktop/)
+- **Git** — [download here](https://git-scm.com/downloads) (macOS users: install via `xcode-select --install` in Terminal)
+
+---
+
+## Installation
+
+### 1. Get the code
+
+Open Terminal and run:
+
+```bash
+git clone https://github.com/larspett/historical-grid-map-digitiser.git
+```
+
+This creates a folder called `historical-grid-map-digitiser` in your current directory.
+
+### 2. Open the project in RStudio
+
+In RStudio: **File → Open Project** and navigate to the cloned folder. Open `historical-grid-map-digitiser.Rproj`.
+
+You should see the message:
+```
+Project 'historical-grid-map-digitiser' loaded. [renv x.x.x]
+```
+
+### 3. Install packages
+
+This project uses `renv` to manage R packages, ensuring everyone uses the same package versions. In the RStudio console, run:
 
 ```r
 renv::restore()
 ```
 
-Key packages: `pdftools`, `magick`, `sf`, `dplyr`, `shiny`, `readr`
+This installs all required packages automatically. It may take a few minutes the first time.
 
-## Usage
+---
 
-### 1. Extract pages
+## Preparing your maps
+
+### Step 1 — Export map images from PDF
+
+If your maps are in a PDF:
+
+1. Open the PDF in Acrobat (or similar)
+2. Delete any non-map pages (text, notes, etc.)
+3. Export remaining pages as individual PNG files at **300 dpi**
+4. Place the PNG files in the `pages/` folder inside the project
+
+### Step 2 — Name the files
+
+Rename each PNG file to describe its contents:
+
+```
+{species}_{year}.png
+```
+
+Use lowercase, no spaces, and replace Swedish characters (å→a, ä→a, ö→o):
+
+```
+skogsgrasfjaril_1965.png
+nasselfjaril_1966.png
+amiralfjäril_1967.png
+```
+
+### Step 3 — Generate the catalogue
+
+Once all files are named, run this in the RStudio console to create `data/catalogue.csv` automatically:
 
 ```r
-source("R/01_extract_pages.R")
-extract_pages("path/to/your.pdf", dpi = 400)
+library(dplyr)
+library(readr)
+
+files <- list.files("pages", pattern = "\\.png$")
+
+catalogue <- data.frame(filename = files) |>
+  mutate(
+    species = sub("_\\d{4}\\.png$", "", filename),
+    year    = as.integer(sub(".*_(\\d{4})\\.png$", "\\1", filename))
+  )
+
+write_csv(catalogue, "data/catalogue.csv")
 ```
 
-### 2. Catalogue pages
+---
 
-Edit `data/catalogue.csv` manually — one row per page:
+## Running the pipeline
 
-```
-page,type,species,year
-001,text,NA,NA
-002,map,skogsgrasfjaril,1965
-```
+### Step 1 — Click grid corners (once per map)
 
-### 3. Click grid corners
+Launch the corner-clicking app from the RStudio console:
 
 ```r
 shiny::runApp("shiny/corner_clicker")
 ```
 
-For each map page, load the image and click the 4 grid corners in order:
-top-left (A1), top-right (P1), bottom-left (A23), bottom-right (P23).
-Coordinates are appended to `data/corners.csv`.
+A window opens showing your map images. For each map:
 
-### 4. Sample cells and build output
+1. Select the page from the dropdown
+2. Click the **4 grid corners** in order: top-left, top-right, bottom-left, bottom-right
+3. The app saves the coordinates automatically and advances to the next page
+
+Corner coordinates are saved to `data/corners.csv` as you go — you can stop and resume at any time.
+
+### Step 2 — Sample cells and build output
+
+Once corners are recorded for all maps, run:
 
 ```r
 source("R/02_sample_cells.R")
 source("R/03_build_grid.R")
-run_pipeline("data/catalogue.csv", "data/corners.csv")
+run_pipeline()
 ```
 
-## Output format
+This samples the pixel darkness at each grid cell centroid, classifies cells as present or absent, attaches real-world coordinates, and writes the output to `data/output/`.
 
+---
+
+## Output
+
+The final dataset is a GeoPackage (`data/output/presence_absence.gpkg`) and CSV (`data/output/presence_absence_raw.csv`) with one row per grid cell per map:
+
+| Column | Description |
+|--------|-------------|
+| `species` | Species name (from filename) |
+| `year` | Survey year (from filename) |
+| `col` | Grid column (A–P) |
+| `row` | Grid row (1–23) |
+| `present` | TRUE/FALSE |
+| `darkness` | Raw pixel darkness value (0–1) |
+| `geometry` | Cell centroid in SWEREF99TM (EPSG:3006) |
+
+---
+
+## Adapting to a different map
+
+The coordinate system is defined in `R/03_build_grid.R`. Update these values for a different survey grid:
+
+```r
+GRID_COLS  <- 16        # number of columns
+GRID_ROWS  <- 23        # number of rows
+CELL_SIZE  <- 200       # cell size in metres
+ORIGIN_E   <- 445000    # easting of top-left corner of cell A1 (UTM metres)
+ORIGIN_N   <- 6235000   # northing of top-left corner of cell A1 (UTM metres)
+CRS_SOURCE <- 32633     # EPSG code for source CRS (UTM zone 33N)
+CRS_OUTPUT <- 3006      # EPSG code for output CRS (SWEREF99TM)
 ```
-species, year, col, row, easting, northing, x_sweref, y_sweref, present
-skogsgrasfjaril, 1965, E, 5, 445800, 6234100, ..., ..., 1
-```
 
-## Adapting to other maps
+Everything else — page extraction, corner clicking, intensity sampling — works without modification.
 
-The only map-specific inputs are:
+---
 
-1. Grid origin coordinates and cell size → `R/03_build_grid.R`
-2. Number of columns and rows → `R/03_build_grid.R`
-3. UTM zone → `R/03_build_grid.R`
+## Troubleshooting
 
-Everything else (page extraction, corner clicking, intensity sampling) is fully general.
+**`renv::restore()` fails** — make sure you opened the project via the `.Rproj` file, not by navigating to the folder in RStudio's file pane.
+
+**Shiny app doesn't show images** — check that PNG files are in the `pages/` folder and named correctly.
+
+**PDF extraction crashes** — export pages individually from Acrobat rather than converting the full PDF in R.
+
+---
+
+## Documentation
+
+- `docs/pipeline.md` — detailed pipeline notes and coordinate system derivation
+- `docs/decisions.md` — rationale behind key technical decisions
+- `CHANGELOG.md` — version history
 
 ## License
 
