@@ -18,32 +18,42 @@ Scanned map images  →  Click 4 corners  →  Automated cell sampling  →  Geo
 
 - **R** (version 4.1 or later) — [download here](https://cran.r-project.org)
 - **RStudio** — [download here](https://posit.co/download/rstudio-desktop/)
-- **Git** — [download here](https://git-scm.com/downloads) (macOS users: install via `xcode-select --install` in Terminal)
+- **Git** — [download here](https://git-scm.com/downloads)
+  - macOS: can also be installed by running `xcode-select --install` in Terminal
+  - Windows: the installer includes Git Bash — use that for any command-line steps
 
 ---
 
 ## Installation
 
-### 1. Get the code
+### 1. Get the code — via RStudio (recommended, works on Mac and Windows)
 
-Open Terminal and run:
+In RStudio:
 
-```bash
-git clone https://github.com/larspett/historical-grid-map-digitiser.git
-```
+1. **File → New Project → Version Control → Git**
+2. Paste this URL as the Repository URL:
+   `https://github.com/larspett/historical-grid-map-digitiser.git`
+3. Choose a folder to save it in
+4. Click **Create Project**
 
-This creates a folder called `historical-grid-map-digitiser` in your current directory.
-
-### 2. Open the project in RStudio
-
-In RStudio: **File → Open Project** and navigate to the cloned folder. Open `historical-grid-map-digitiser.Rproj`.
+RStudio will download the project and open it automatically — no Terminal needed.
 
 You should see the message:
 ```
 Project 'historical-grid-map-digitiser' loaded. [renv x.x.x]
 ```
 
-### 3. Install packages
+### 1. Get the code — via Terminal (alternative)
+
+On macOS (Terminal) or Windows (Git Bash):
+
+```bash
+git clone https://github.com/larspett/historical-grid-map-digitiser.git
+```
+
+Then open RStudio and go to **File → Open Project**, navigate to the downloaded folder, and open `historical-grid-map-digitiser.Rproj`.
+
+### 2. Install packages
 
 This project uses `renv` to manage R packages, ensuring everyone uses the same package versions. In the RStudio console, run:
 
