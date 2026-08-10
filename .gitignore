@@ -31,3 +31,4 @@ renv/cellar/
 renv/python/
 renv/sandbox/
 renv/staging/
+.Rprofile
