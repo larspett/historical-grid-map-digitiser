@@ -89,7 +89,7 @@ Use lowercase, no spaces, and replace Swedish characters (å→a, ä→a, ö→o
 ```
 skogsgrasfjaril_1965.png
 nasselfjaril_1966.png
-amiralfjäril_1967.png
+amiralfjaril_1967.png
 ```
 
 ### Step 3 — Generate the catalogue

@@ -25,3 +25,9 @@ Thumbs.db
 .Rproj.user
 data/*.pdf
 data/split_files/
+renv/library/
+renv/local/
+renv/cellar/
+renv/python/
+renv/sandbox/
+renv/staging/
