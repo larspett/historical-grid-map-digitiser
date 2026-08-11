@@ -11,6 +11,11 @@ Format: `vMAJOR.MINOR.PATCH — YYYY-MM-DD`
 
 ## v0.1.2 — 2026-08-11
 
+### Added
+- `R/04_build_catalogue.R` — generates `data/catalogue.csv` automatically from
+  PNG filenames; handles both single-year (`_1965.png`) and multi-year
+  (`_1965-1968.png`) filename formats; warns on unexpected filename patterns
+
 ### Bug fixes
 - Fixed corner clicker app: page identifiers throughout now use filenames
   (`skogsgrasfjaril_1965.png`) rather than zero-padded integers derived from

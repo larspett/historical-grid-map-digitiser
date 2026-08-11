@@ -89,7 +89,7 @@ Use lowercase, no spaces, and replace Swedish characters (å→a, ä→a, ö→o
 ```
 skogsgrasfjaril_1965.png
 nasselfjaril_1966.png
-amiralfjaril_1967.png
+amiralfjäril_1967.png
 ```
 
 ### Step 3 — Generate the catalogue
@@ -97,19 +97,14 @@ amiralfjaril_1967.png
 Once all files are named, run this in the RStudio console to create `data/catalogue.csv` automatically:
 
 ```r
-library(dplyr)
-library(readr)
-
-files <- list.files("pages", pattern = "\\.png$")
-
-catalogue <- data.frame(filename = files) |>
-  mutate(
-    species = sub("_\\d{4}\\.png$", "", filename),
-    year    = as.integer(sub(".*_(\\d{4})\\.png$", "\\1", filename))
-  )
-
-write_csv(catalogue, "data/catalogue.csv")
+source("R/04_build_catalogue.R")
+build_catalogue()
 ```
+
+This generates one row per map file with columns `filename`, `species`, and `year`.
+Maps covering multiple years (e.g. `skogsgrasfjaril_1965-1968.png`) are recorded
+as a single summary entry with `year = "1965-1968"`. Any filenames that don't match
+the expected pattern will be flagged with a warning.
 
 ---
 
