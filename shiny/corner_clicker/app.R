@@ -17,8 +17,8 @@ library(magick)
 library(readr)
 library(dplyr)
 
-CORNERS_PATH <- "data/corners.csv"
-PAGES_DIR    <- "pages"
+CORNERS_PATH  <- "data/corners.csv"
+PAGES_DIR     <- "pages"
 CORNER_LABELS <- c("tl", "tr", "bl", "br")
 CORNER_NAMES  <- c("Top-left (A1)", "Top-right (P1)",
                    "Bottom-left (A23)", "Bottom-right (P23)")
@@ -76,38 +76,35 @@ server <- function(input, output, session) {
   # ── Page list ---------------------------------------------------------------
 
   observe({
+    # Use filenames directly as both values and labels
     pngs <- list.files(PAGES_DIR, pattern = "\\.png$", full.names = FALSE)
-    pages <- sub("page_0*(\\d+)\\.png", "\\1", pngs)
 
-    # Mark already-completed pages
+    # Mark already-completed pages with a tick
     if (file.exists(CORNERS_PATH)) {
       done <- read_csv(CORNERS_PATH, show_col_types = FALSE) |>
         group_by(page) |>
         summarise(n = n()) |>
         filter(n == 4) |>
         pull(page)
-      labels <- ifelse(pages %in% as.character(done),
-                       paste0(pages, " ✓"),
-                       pages)
+      labels <- ifelse(pngs %in% done, paste0(pngs, " \u2713"), pngs)
     } else {
-      labels <- pages
+      labels <- pngs
     }
 
     updateSelectInput(session, "page_select",
-                      choices  = setNames(pages, labels),
-                      selected = pages[1])
+                      choices  = setNames(pngs, labels),
+                      selected = pngs[1])
   })
 
   # ── Load image when page changes --------------------------------------------
 
   observeEvent(input$page_select, {
     req(input$page_select)
-    path <- file.path(PAGES_DIR,
-                      sprintf("page_%03d.png", as.integer(input$page_select)))
+    path <- file.path(PAGES_DIR, input$page_select)
     if (!file.exists(path)) return()
 
-    img      <- image_read(path)
-    info     <- image_info(img)
+    img         <- image_read(path)
+    info        <- image_info(img)
     rv$img      <- img
     rv$img_dims <- list(w = info$width, h = info$height)
     rv$clicks   <- data.frame(corner = character(),
@@ -127,18 +124,11 @@ server <- function(input, output, session) {
     if (nrow(rv$clicks) > 0) {
       cols_clicked <- c("red", "blue", "green", "purple")
       for (i in seq_len(nrow(rv$clicks))) {
-        # Convert pixel coords back to plot coords
-        # plot() maps image so x: 0..1, y: 0..1 (top-left origin)
         x_plot <- rv$clicks$px[i] / rv$img_dims$w
         y_plot <- 1 - rv$clicks$py[i] / rv$img_dims$h
-        points(x_plot, y_plot,
-               pch = 19, cex = 2,
-               col = cols_clicked[i])
-        text(x_plot, y_plot,
-             labels = CORNER_LABELS[i],
-             pos    = 4,
-             col    = cols_clicked[i],
-             cex    = 1.2)
+        points(x_plot, y_plot, pch = 19, cex = 2, col = cols_clicked[i])
+        text(x_plot, y_plot, labels = CORNER_LABELS[i],
+             pos = 4, col = cols_clicked[i], cex = 1.2)
       }
     }
   }, res = 96)
@@ -150,34 +140,29 @@ server <- function(input, output, session) {
     n_so_far <- nrow(rv$clicks)
     if (n_so_far >= 4) return()
 
-    # Convert plot click (0..1 range) to pixel coordinates
     px <- input$map_click$x * rv$img_dims$w
     py <- (1 - input$map_click$y) * rv$img_dims$h
 
-    new_row <- data.frame(
-      corner = CORNER_LABELS[n_so_far + 1],
-      px     = round(px),
-      py     = round(py)
-    )
-    rv$clicks <- bind_rows(rv$clicks, new_row)
+    rv$clicks <- bind_rows(rv$clicks,
+                           data.frame(corner = CORNER_LABELS[n_so_far + 1],
+                                      px     = round(px),
+                                      py     = round(py)))
 
-    # Auto-save when all 4 corners are clicked
-    if (nrow(rv$clicks) == 4) {
-      save_corners()
-    }
+    if (nrow(rv$clicks) == 4) save_corners()
   })
 
   # ── Save corners -----------------------------------------------------------
 
   save_corners <- function() {
-    page_num <- as.integer(input$page_select)
+    filename <- input$page_select   # use filename as page identifier
+
     new_rows <- rv$clicks |>
-      mutate(page = page_num) |>
+      mutate(page = filename) |>
       select(page, corner, px, py)
 
     if (file.exists(CORNERS_PATH)) {
       existing <- read_csv(CORNERS_PATH, show_col_types = FALSE) |>
-        filter(page != page_num)        # overwrite if re-doing a page
+        filter(page != filename)    # overwrite if re-doing a page
       combined <- bind_rows(existing, new_rows)
     } else {
       combined <- new_rows
@@ -185,23 +170,22 @@ server <- function(input, output, session) {
 
     write_csv(combined, CORNERS_PATH)
     showNotification(
-      sprintf("Page %03d corners saved.", page_num),
+      paste0("Corners saved: ", filename),
       type     = "message",
       duration = 3
     )
 
     # Auto-advance to next unfinished page
     Sys.sleep(0.5)
-    all_pages <- as.integer(isolate(
-      sub("page_0*(\\d+)\\.png", "\\1",
-          list.files(PAGES_DIR, pattern = "\\.png$"))
-    ))
-    done <- read_csv(CORNERS_PATH, show_col_types = FALSE) |>
-      group_by(page) |> summarise(n = n()) |> filter(n == 4) |> pull(page)
+    all_pages <- list.files(PAGES_DIR, pattern = "\\.png$", full.names = FALSE)
+    done <- if (file.exists(CORNERS_PATH)) {
+      read_csv(CORNERS_PATH, show_col_types = FALSE) |>
+        group_by(page) |> summarise(n = n()) |> filter(n == 4) |> pull(page)
+    } else character(0)
+
     remaining <- setdiff(all_pages, done)
     if (length(remaining) > 0) {
-      updateSelectInput(session, "page_select",
-                        selected = as.character(min(remaining)))
+      updateSelectInput(session, "page_select", selected = remaining[1])
     }
   }
 
@@ -219,34 +203,27 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$skip_btn, {
-    all_pages <- as.integer(
-      sub("page_0*(\\d+)\\.png", "\\1",
-          list.files(PAGES_DIR, pattern = "\\.png$"))
-    )
-    current  <- as.integer(input$page_select)
-    remaining <- all_pages[all_pages > current]
+    all_pages <- list.files(PAGES_DIR, pattern = "\\.png$", full.names = FALSE)
+    current   <- input$page_select
+    remaining <- all_pages[which(all_pages == current) + 1]
     if (length(remaining) > 0)
-      updateSelectInput(session, "page_select",
-                        selected = as.character(min(remaining)))
+      updateSelectInput(session, "page_select", selected = remaining[1])
   })
 
   # ── Status UI -------------------------------------------------------------
 
   output$corner_status <- renderUI({
-    labels <- CORNER_NAMES
-    cols   <- c("danger", "warning", "warning", "warning")
-    done   <- nrow(rv$clicks)
-
-    items <- lapply(seq_along(labels), function(i) {
+    done  <- nrow(rv$clicks)
+    items <- lapply(seq_along(CORNER_NAMES), function(i) {
       if (i <= done) {
         tags$p(style = "color: green; margin: 2px 0;",
-               paste0("✓ ", labels[i]))
+               paste0("\u2713 ", CORNER_NAMES[i]))
       } else if (i == done + 1) {
         tags$p(style = "color: #e67e22; font-weight: bold; margin: 2px 0;",
-               paste0("→ ", labels[i]))
+               paste0("\u2192 ", CORNER_NAMES[i]))
       } else {
         tags$p(style = "color: #aaa; margin: 2px 0;",
-               paste0("  ", labels[i]))
+               paste0("  ", CORNER_NAMES[i]))
       }
     })
     tagList(items)

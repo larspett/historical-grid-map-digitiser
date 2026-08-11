@@ -9,6 +9,33 @@ Format: `vMAJOR.MINOR.PATCH — YYYY-MM-DD`
 
 ---
 
+## v0.1.2 — 2026-08-11
+
+### Bug fixes
+- Fixed corner clicker app: page identifiers throughout now use filenames
+  (`skogsgrasfjaril_1965.png`) rather than zero-padded integers derived from
+  `page_001.png` style names — images were not loading after files were renamed
+  to the `{species}_{year}.png` convention (reported and diagnosed by Ana,
+  Windows testing)
+- Updated `corners.csv` page column from integer to filename string accordingly
+- Auto-advance and skip button logic updated to match
+
+---
+
+## v0.1.1 — 2026-08-11
+
+### Added
+- Updated `README.md` with full installation and usage instructions pitched at
+  RStudio-familiar users; RStudio-based clone method listed first as recommended
+  approach for both Mac and Windows
+- `docs/DECISIONS.md` entry for bleed-through handling via threshold tuning
+- `docs/DECISIONS.md` entry for multi-year map filename convention
+  (`{species}_{year1}-{year2}.png` treated as single summary entry)
+- Catalogue generation code updated to handle both single-year and year-range
+  filenames; `year` column is character type to accommodate both
+
+---
+
 ## v0.1.0 — 2026-08-06
 
 ### Added
